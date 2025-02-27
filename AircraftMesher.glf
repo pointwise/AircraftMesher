@@ -645,9 +645,26 @@ set symMode [pw::Application begin Create]
         set intEdge [pw::Edge createFromConnectors $consInSym]
         $symDom addEdge $intEdge
 
-    if { [$symDom getCellCount] == 0 } {
-        $intEdge reverse
-    }
+        # Older versions of Pointwise could generate empty domains
+        # when an interior edge is reversed. Newer versions
+        # may still do this, but may also produce folded and
+        # intersecting cells. In either case, reverse the
+        # interior edge.
+        if { [$symDom getCellCount] == 0 } {
+            # Empty domain
+            $intEdge reverse
+        } else {
+            # Check for cell intersection and reverse the interior edge,
+            # if necessary
+            set examiner [pw::Examine create DomainCellIntersection]
+            $examiner addEntity $symDom
+            $examiner examine
+            if { [$examiner getCategoryCount Intersected] != 0 } {
+                $intEdge reverse
+            }
+            $examiner delete
+        }
+
 $symMode end
 unset symMode
 
